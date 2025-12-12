@@ -1,142 +1,138 @@
-# FORTRESS ANTI-DDOS SYSTEM
+# Fortress Anti-DDoS v3.0
 
-XDP/eBPF tabanli, kernel seviyesinde calisan, ultra-yuksek performansli DDoS koruma sistemi.
+Enterprise-grade DDoS mitigation system with multi-layer protection.
 
-## OZELLIKLER
+## Protection Layers
 
-- XDP ile kernel bypass (10M+ PPS)
-- eBPF ile akilli trafik analizi
-- SYN flood korumasi (SYN cookies)
-- UDP flood ve amplification korumasi
-- GeoIP filtreleme
-- ipset entegrasyonu (O(1) lookup)
-- Adaptive rate limiting (Token bucket)
+### Layer 1: XDP/eBPF (Kernel Level)
+- Packet filtering at driver level (fastest)
+- SYN flood protection
+- UDP flood protection  
+- Invalid packet detection
+- Rate limiting per IP
+
+### Layer 2: iptables (Netfilter)
+- Multi-chain architecture (FORTRESS, FORTRESS_TCP, FORTRESS_UDP, FORTRESS_HTTP, FORTRESS_ICMP)
 - Connection tracking
-- Protocol validation
-- Real-time monitoring
-- Otomatik blocklist guncelleme
-- iptables fallback
+- SYN cookies
+- Hashlimit rate limiting
+- Invalid flag detection
+- Amplification attack blocking
 
-## KURULUM
+### Layer 3: IPSet
+- High-performance IP blocklists
+- Auto-expiring bans
+- Whitelist support
+- 10M+ IP capacity
+
+### Layer 4: Nginx (Layer 7)
+- HTTP rate limiting (10 req/s)
+- Connection limits per IP
+- Bad bot blocking
+- Request size limits
+
+### Layer 5: Threat Engine (Python)
+- Real-time connection monitoring
+- SYN state tracking
+- Auto-ban on threshold breach
+- Nginx log analysis
+- Traffic pattern analysis
+
+## Quick Install
 
 ```bash
+git clone https://github.com/Bwrisz/fortress-antiddos.git
+cd fortress-antiddos
 chmod +x install.sh
 sudo ./install.sh
 ```
 
-## KULLANIM
+## Protection Thresholds
+
+| Layer | Attack Type | Threshold | Action |
+|-------|-------------|-----------|--------|
+| XDP | SYN Flood | 20/s per IP | DROP + Auto-Block |
+| XDP | UDP Flood | 50/s per IP | DROP + Auto-Block |
+| XDP | Connection | 30/s per IP | DROP + Auto-Block |
+| iptables | SYN Flood | 30/s global, 10/s per IP | DROP |
+| iptables | HTTP | 5/s per IP, 2 conn max | DROP |
+| iptables | ACK Flood | 100/s global | DROP |
+| iptables | RST Flood | 10/s global | DROP |
+| iptables | Growtopia UDP 17091 | 500/s, 100/s per IP | ACCEPT (protected) |
+| Nginx | Rate Limit | 5 req/s | 444 |
+| Nginx | Connection | 5 per IP | 444 |
+| Nginx | Timeout | 3s | 444 (Slowloris) |
+| Threat Engine | Connection | 3+ conn = ban | Auto-Ban |
+| Threat Engine | SYN | 2+ SYN = ban | Auto-Ban |
+| Threat Engine | HTTP | 15+ req = ban | Auto-Ban |
+| ICMP | All | 2/s | DROP |
+
+## Files Structure
+
+```
+fortress/
+├── install.sh              # Main installer
+├── config/
+│   └── fortress.yaml       # Configuration
+├── src/
+│   ├── threat_engine.py    # Auto-ban engine
+│   ├── firewall_manager.py # iptables/ipset management
+│   ├── connection_tracker.py # Connection monitoring
+│   ├── traffic_analyzer.py # Traffic analysis
+│   ├── fortress_daemon.py  # Main daemon
+│   ├── fortress_cli.py     # CLI tool
+│   └── xdp_loader.py       # XDP management
+├── xdp/
+│   ├── xdp_filter.c        # XDP kernel filter
+│   └── Makefile
+├── ebpf/
+│   ├── xdp_fortress.c      # Advanced eBPF program
+│   ├── maps.h              # BPF maps
+│   └── common.h            # Common definitions
+├── nginx/
+│   └── fortress.conf       # Nginx rate limiting
+└── data/
+    ├── whitelist.txt       # Whitelisted IPs
+    └── local_blocklist.txt # Manual blocklist
+```
+
+## Commands
 
 ```bash
-# Durum kontrolu
-fortress status
+# Service status
+systemctl status fortress
 
-# Canli trafik izleme
-fortress watch
+# View blocked IPs
+ipset list fortress_block | tail -20
 
-# IP engelleme
-fortress block 1.2.3.4
-fortress block 1.2.3.4 -t 3600 -r "attack"
+# View iptables stats
+watch -n 1 'iptables -L FORTRESS -v -n | head -30'
 
-# IP engel kaldirma
-fortress unblock 1.2.3.4
+# View logs
+tail -f /var/log/fortress/threat_engine.log
 
-# Whitelist ekleme
-fortress whitelist 5.6.7.8
+# Manual ban
+ipset add fortress_block 1.2.3.4 timeout 3600
 
-# Engelli IP listesi
-fortress list
-
-# Loglar
-fortress logs -n 100
-
-# Servis yonetimi
-fortress start
-fortress stop
-fortress restart
-fortress reload
+# Manual unban
+ipset del fortress_block 1.2.3.4
 ```
 
-## KONFIGÜRASYON
+## Whitelist
 
-`/etc/fortress/fortress.yaml` dosyasini duzenleyin:
+Default whitelist: `78.165.141.159`
 
-```yaml
-interface: eth0
+Add more IPs to `/opt/fortress/data/whitelist.txt`
 
-rate_limits:
-  per_ip_pps: 10000
-  syn_pps: 10000
-  udp_pps: 50000
+## Requirements
 
-geoip:
-  enabled: true
-  blocked_countries:
-    - CN
-    - RU
-    - KP
-    - IR
+- Debian/Ubuntu Linux
+- Root access
+- Python 3.8+
+- iptables, ipset
+- nginx (optional, for Layer 7)
+- clang, llvm (optional, for XDP)
 
-protection:
-  syn_cookies: true
-  tcp_validation: true
-  udp_validation: true
-  fragment_protection: true
-```
+## License
 
-## MONITORING
-
-Prometheus metrics: `http://localhost:9100/metrics`
-Status API: `http://localhost:9100/status`
-
-## DOSYA YAPISI
-
-```
-/opt/fortress/
-├── src/           # Python kaynak kodlari
-├── ebpf/          # eBPF/XDP programlari
-├── config/        # Konfigürasyon dosyalari
-├── data/          # Veri dosyalari (blocklist, whitelist, geoip)
-├── scripts/       # Yardimci scriptler
-└── logs/          # Log dosyalari
-
-/etc/fortress/
-└── fortress.yaml  # Ana konfigürasyon
-
-/var/log/fortress/
-├── fortress.log   # Ana log
-├── blocked.log    # Engellenen IP loglari
-└── manual.log     # Manuel islem loglari
-```
-
-## PERFORMANS
-
-- 10M+ PPS islem kapasitesi
-- <100ns paket isleme suresi
-- 10M+ IP blocklist destegi
-- 2M+ aktif baglanti takibi
-- Per-CPU veri yapilari (lock-free)
-
-## KORUMA KATMANLARI
-
-1. XDP Layer (Driver seviyesi)
-   - GeoIP filtreleme
-   - Blocklist kontrolu
-   - Protocol validation
-   - Rate limiting
-
-2. eBPF TC Layer
-   - SYN flood korumasi
-   - UDP flood korumasi
-   - Connection tracking
-   - Attack fingerprinting
-
-3. Kernel Stack
-   - iptables fallback
-   - ipset entegrasyonu
-   - conntrack
-
-4. Userspace
-   - Daemon yonetimi
-   - Monitoring
-   - Blocklist guncelleme
-   - Alerting
+MIT
