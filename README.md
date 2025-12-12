@@ -120,7 +120,7 @@ ipset del fortress_block 1.2.3.4
 
 ## Whitelist
 
-Default whitelist: `78.165.141.159`
+Default whitelist: ???? yıour ip
 
 Add more IPs to `/opt/fortress/data/whitelist.txt`
 
