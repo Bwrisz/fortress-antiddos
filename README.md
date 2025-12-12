@@ -1,8 +1,8 @@
-# Fortress Anti-DDoS v3.0
+# Fortress Anti-DDoS | For Growtopia Private Servers (UDP 17091)
 
 Enterprise-grade DDoS mitigation system with multi-layer protection.
 
-## Protection Layers
+## Protectino Layers
 
 ### Layer 1: XDP/eBPF (Kernel Level)
 - Packet filtering at driver level (fastest)
@@ -40,12 +40,14 @@ Enterprise-grade DDoS mitigation system with multi-layer protection.
 
 ## Quick Install
 
+
+--  !TESTED FOR DEBIAN  --
 ```bash
 git clone https://github.com/Bwrisz/fortress-antiddos.git
 cd fortress-antiddos
 chmod +x install.sh
 sudo ./install.sh
-```
+``` 
 
 ## Protection Thresholds
 
@@ -71,28 +73,28 @@ sudo ./install.sh
 
 ```
 fortress/
-├── install.sh              # Main installer
+├── install.sh              # main
 ├── config/
-│   └── fortress.yaml       # Configuration
+│   └── fortress.yaml     # Configuration
 ├── src/
-│   ├── threat_engine.py    # Auto-ban engine
+│   ├── threat_engine.py # Auto-ban engine
 │   ├── firewall_manager.py # iptables/ipset management
 │   ├── connection_tracker.py # Connection monitoring
 │   ├── traffic_analyzer.py # Traffic analysis
-│   ├── fortress_daemon.py  # Main daemon
-│   ├── fortress_cli.py     # CLI tool
-│   └── xdp_loader.py       # XDP management
+│   ├── fortress_daemon.py # Main daemon
+│   ├── fortress_cli.py # CLI tool
+│   └── xdp_loader.py  # XDP management
 ├── xdp/
-│   ├── xdp_filter.c        # XDP kernel filter
+│   ├── xdp_filter.c # XDP kernel filter
 │   └── Makefile
 ├── ebpf/
-│   ├── xdp_fortress.c      # Advanced eBPF program
+│   ├── xdp_fortress.c    # Advanced eBPF program
 │   ├── maps.h              # BPF maps
-│   └── common.h            # Common definitions
+│   └── common.h           # Common definitions
 ├── nginx/
-│   └── fortress.conf       # Nginx rate limiting
+│   └── fortress.conf     # Nginx rate limiting
 └── data/
-    ├── whitelist.txt       # Whitelisted IPs
+    ├── whitelist.txt      # Whitelisted IPs
     └── local_blocklist.txt # Manual blocklist
 ```
 
@@ -126,7 +128,7 @@ Add more IPs to `/opt/fortress/data/whitelist.txt`
 
 ## Requirements
 
-- Debian/Ubuntu Linux
+- Debian/Ubuntu Linux (tested only debian)
 - Root access
 - Python 3.8+
 - iptables, ipset
