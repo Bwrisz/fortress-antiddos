@@ -72,6 +72,10 @@ iptables -A FORTRESS -p icmp -j DROP
 iptables -A FORTRESS -f -j DROP
 iptables -A FORTRESS -m conntrack --ctstate INVALID -j DROP
 
+iptables -A FORTRESS -p tcp -m conntrack --ctstate NEW -m limit --limit 100/s --limit-burst 200 -j ACCEPT
+iptables -A FORTRESS -p udp -m conntrack --ctstate NEW -j ACCEPT
+iptables -A FORTRESS -j RETURN
+
 echo "[6/6] Servisi baslat..."
 systemctl start fortress
 
