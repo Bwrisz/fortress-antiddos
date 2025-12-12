@@ -1,0 +1,26 @@
+[Unit]
+Description=Fortress Anti-DDoS Protection System
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStartPre=-/opt/fortress/scripts/pre-start.sh
+ExecStart=/usr/bin/python3 /opt/fortress/src/fortress_daemon.py -c /etc/fortress/fortress.yaml
+ExecStopPost=-/opt/fortress/scripts/post-stop.sh
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=60
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fortress
+LimitNOFILE=2097152
+LimitNPROC=65535
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target

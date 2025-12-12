@@ -1,0 +1,16 @@
+# Fortress Whitelist
+# Add trusted IP addresses here, one per line
+# Lines starting with # are comments
+
+# Localhost
+127.0.0.1
+
+# Google DNS
+8.8.8.8
+8.8.4.4
+
+# Cloudflare DNS
+1.1.1.1
+1.0.0.1
+
+# Add your trusted IPs below:

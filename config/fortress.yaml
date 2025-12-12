@@ -1,0 +1,86 @@
+interface: ens4
+log_level: INFO
+log_file: /var/log/fortress/fortress.log
+
+xdp:
+  mode: native
+  flags: 0
+
+rate_limits:
+  global_pps: 1000000
+  per_ip_pps: 10000
+  per_ip_cps: 100
+  syn_pps: 10000
+  udp_pps: 50000
+  icmp_pps: 1000
+
+thresholds:
+  syn_flood: 10000
+  udp_flood: 50000
+  icmp_flood: 5000
+  connection_limit: 1000
+  bandwidth_mbps: 1000
+
+timeouts:
+  connection_idle: 300
+  syn_timeout: 30
+  udp_timeout: 30
+  blocklist_ttl: 3600
+  whitelist_ttl: 86400
+
+geoip:
+  enabled: true
+  database: /opt/fortress/data/geoip.dat
+  blocked_countries:
+    - CN
+    - RU
+    - KP
+    - IR
+
+blocklist:
+  enabled: true
+  feeds:
+    - https://raw.githubusercontent.com/stamparm/ipsum/master/levels/3.txt
+    - https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset
+  update_interval: 3600
+  local_file: /opt/fortress/data/local_blocklist.txt
+
+whitelist:
+  enabled: true
+  file: /opt/fortress/data/whitelist.txt
+
+services:
+  http:
+    ports: [80, 443, 8080, 8443]
+    rate_limit: 1000
+    burst: 100
+  dns:
+    ports: [53]
+    rate_limit: 100
+    burst: 20
+  ssh:
+    ports: [22]
+    rate_limit: 5
+    burst: 3
+  custom: []
+
+protection:
+  syn_cookies: true
+  syn_proxy: false
+  tcp_validation: true
+  udp_validation: true
+  icmp_validation: true
+  fragment_protection: true
+  amplification_protection: true
+
+monitoring:
+  enabled: true
+  prometheus_port: 9100
+  metrics_interval: 1
+  alert_webhook: ""
+
+failsafe:
+  enabled: true
+  health_check_interval: 5
+  auto_recovery: true
+  fallback_to_iptables: true
