@@ -152,7 +152,7 @@ fi
 cd "$SCRIPT_DIR"
 
 log "IPSet'ler olusturuluyor..."
-for set in fortress_block fortress_allow fortress_ratelimit fortress_http fortress_syn; do
+for set in fortress_block fortress_allow fortress_ratelimit fortress_http fortress_syn game_whitelist; do
     ipset destroy $set 2>/dev/null || true
 done
 sleep 1
@@ -161,9 +161,12 @@ ipset create fortress_allow hash:ip maxelem 100000 hashsize 16384
 ipset create fortress_ratelimit hash:ip maxelem 1000000 hashsize 262144 timeout 60
 ipset create fortress_http hash:ip maxelem 1000000 hashsize 262144 timeout 300
 ipset create fortress_syn hash:ip maxelem 1000000 hashsize 262144 timeout 120
+# Game whitelist - Vercel login sonrası dinamik IP whitelist
+# Rust server /api/whitelist endpoint'i bu ipset'e IP ekler
+ipset create game_whitelist hash:ip maxelem 100000 hashsize 16384 timeout 300
 ipset add fortress_allow 127.0.0.1
 ipset add fortress_allow $WHITELIST_IP
-success "IPSet'ler olusturuldu"
+success "IPSet'ler olusturuldu (game_whitelist dahil)"
 
 log "iptables ayarlaniyor..."
 iptables -D INPUT -j FORTRESS 2>/dev/null || true
@@ -180,6 +183,8 @@ iptables -I INPUT 1 -j FORTRESS
 
 iptables -A FORTRESS -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 iptables -A FORTRESS -i lo -j ACCEPT
+# Game whitelist - Vercel login sonrası dinamik whitelist (fortress_allow'dan ÖNCE!)
+iptables -A FORTRESS -m set --match-set game_whitelist src -j ACCEPT
 iptables -A FORTRESS -m set --match-set fortress_allow src -j ACCEPT
 iptables -A FORTRESS -m set --match-set fortress_block src -j DROP
 iptables -A FORTRESS -m set --match-set fortress_ratelimit src -j DROP
