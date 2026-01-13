@@ -1,86 +1,124 @@
-interface: ens4
+# SAKURA FORTRESS - GOAT Anti-DDoS Configuration
+# Growtopia Private Server Protection
+
+# Network interface (VPS'e göre değiştir: ip link show ile bak)
+interface: ens192
 log_level: INFO
 log_file: /var/log/fortress/fortress.log
 
+# XDP Settings (kernel seviyesi filtreleme)
 xdp:
-  mode: native
+  mode: native  # native = en hızlı, skb = uyumluluk modu
   flags: 0
 
+# Rate Limits (paket/saniye)
 rate_limits:
-  global_pps: 1000000
-  per_ip_pps: 10000
-  per_ip_cps: 100
-  syn_pps: 10000
-  udp_pps: 50000
-  icmp_pps: 1000
+  global_pps: 500000      # Toplam paket limiti
+  per_ip_pps: 5000        # IP başına paket limiti
+  per_ip_cps: 50          # IP başına bağlantı limiti
+  syn_pps: 5000           # SYN paket limiti
+  udp_pps: 10000          # UDP paket limiti
+  icmp_pps: 100           # ICMP (ping) limiti
 
+# Flood Thresholds (bu değerleri aşınca otomatik engelle)
 thresholds:
-  syn_flood: 10000
-  udp_flood: 50000
-  icmp_flood: 5000
-  connection_limit: 1000
-  bandwidth_mbps: 1000
+  syn_flood: 5000
+  udp_flood: 20000
+  icmp_flood: 1000
+  connection_limit: 500
+  bandwidth_mbps: 500
 
+# Timeout Settings
 timeouts:
-  connection_idle: 300
+  connection_idle: 300    # 5 dakika idle = bağlantı kapat
   syn_timeout: 30
-  udp_timeout: 30
-  blocklist_ttl: 3600
-  whitelist_ttl: 86400
+  udp_timeout: 60
+  blocklist_ttl: 3600     # 1 saat ban
+  whitelist_ttl: 300      # 5 dakika whitelist (oyuncu aktifken yenilenir)
 
+# GeoIP - Ülke Bazlı Filtreleme
 geoip:
   enabled: true
   database: /opt/fortress/data/geoip.dat
+  # Tamamen engellenen ülkeler
   blocked_countries:
-    - CN
-    - RU
-    - KP
-    - IR
+    - CN   # Çin
+    - RU   # Rusya
+    - KP   # Kuzey Kore
+    - IR   # İran
+  # Riskli ülkeler (rate limit uygulanır, engellenmez)
+  risky_countries:
+    - VN   # Vietnam
+    - IN   # Hindistan
+    - BR   # Brezilya
+    - ID   # Endonezya
+  risky_rate_multiplier: 0.5  # Riskli ülkeler için rate limit yarıya düşer
 
+# IP Blocklist - Bilinen Saldırgan IP'leri
 blocklist:
   enabled: true
   feeds:
     - https://raw.githubusercontent.com/stamparm/ipsum/master/levels/3.txt
     - https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset
-  update_interval: 3600
+  update_interval: 3600   # Her saat güncelle
   local_file: /opt/fortress/data/local_blocklist.txt
 
+# Whitelist - Güvenilir IP'ler
 whitelist:
   enabled: true
   file: /opt/fortress/data/whitelist.txt
+  # Vercel IP ranges (login server)
+  static_ranges:
+    - 76.76.21.0/24
+    - 64.29.0.0/16
+    - 216.198.0.0/16
 
+# Service Definitions
 services:
-  http:
-    ports: [80, 443, 8080, 8443]
-    rate_limit: 1000
-    burst: 100
-  dns:
-    ports: [53]
-    rate_limit: 100
-    burst: 20
+  # HTTPS - Login API (Vercel'den gelir)
+  https:
+    ports: [443]
+    protocol: tcp
+    rate_limit: 100       # req/sec per IP
+    burst: 200
+    whitelist_bypass: true  # Whitelist'teki IP'ler rate limit'ten muaf
+  
+  # SSH - Yönetim
   ssh:
     ports: [22]
+    protocol: tcp
     rate_limit: 5
-    burst: 3
-  custom: []
+    burst: 10
+  
+  # Game Server - UDP
+  game:
+    ports: [31847]
+    protocol: udp
+    rate_limit: 1000      # packet/sec per IP
+    burst: 2000
+    whitelist_only: false  # false = herkese açık (token kontrolü Rust'ta)
+    # true yapınca sadece whitelist'tekiler bağlanabilir
 
+# Protection Features
 protection:
-  syn_cookies: true
-  syn_proxy: false
-  tcp_validation: true
-  udp_validation: true
-  icmp_validation: true
-  fragment_protection: true
-  amplification_protection: true
+  syn_cookies: true           # SYN flood koruması
+  syn_proxy: false            # Proxy mode (daha agresif)
+  tcp_validation: true        # TCP flag kontrolü
+  udp_validation: true        # UDP payload kontrolü
+  icmp_validation: true       # ICMP type kontrolü
+  fragment_protection: true   # Fragment saldırı koruması
+  amplification_protection: true  # DNS/NTP amplification koruması
 
+# Monitoring
 monitoring:
   enabled: true
   prometheus_port: 9100
-  metrics_interval: 1
-  alert_webhook: ""
+  metrics_interval: 5
+  alert_webhook: ""           # Discord/Slack webhook (opsiyonel)
 
+# Failsafe - Sistem çökerse
 failsafe:
   enabled: true
-  health_check_interval: 5
+  health_check_interval: 10
   auto_recovery: true
-  fallback_to_iptables: true
+  fallback_to_iptables: true  # XDP çökerse iptables'a geç
